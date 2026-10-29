@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Codenotch
+Comment=Usage limits of your coding assistants on a screen edge
+Exec=codenotch
+Icon=codenotch
+Terminal=false
+Categories=Utility;Development;
+StartupNotify=false

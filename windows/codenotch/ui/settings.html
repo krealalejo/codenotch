@@ -1881,6 +1881,11 @@ document.getElementById('author').addEventListener('click', () => {
    was asked for rather than interrupting anything. */
 const updBtn = document.getElementById('btn-update');
 const updStatus = document.getElementById('update-status');
+if(/Linux/.test(navigator.platform)){
+  const updRow = updBtn.closest('.item');
+  updRow.nextElementSibling.style.display = 'none';
+  updRow.style.display = 'none';
+}
 /* The state arrives before the language does, so the row keeps it and is drawn again by renderAll */
 let updState = null;
 let updateEventSeen = false;

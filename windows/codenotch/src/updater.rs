@@ -123,6 +123,9 @@ fn signed_feed_offer(app: &AppHandle) -> Option<String> {
 /// Returns immediately; release and signed-feed checks happen off the UI thread.
 #[tauri::command]
 pub fn check_for_update(app: AppHandle) {
+    if cfg!(target_os = "linux") {
+        return;
+    }
     if state().as_ref().is_some_and(|s| s.checking || s.installing) {
         return;
     }
@@ -310,6 +313,9 @@ pub fn install_update(app: AppHandle) {
 }
 
 pub fn check_on_launch(app: &AppHandle) {
+    if cfg!(target_os = "linux") {
+        return;
+    }
     let app = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_secs(20));

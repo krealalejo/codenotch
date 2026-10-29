@@ -1,0 +1,29 @@
+pkgname=codenotch
+pkgver=1.24.0
+pkgrel=1
+pkgdesc="Usage limits of Claude Code, Codex, Cursor and other coding assistants on a screen edge"
+arch=('x86_64')
+url="https://github.com/krealalejo/codenotch"
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'libayatana-appindicator' 'librsvg' 'openssl')
+makedepends=('cargo')
+options=('!lto' '!debug')
+_root="$(realpath "$startdir/../../..")"
+
+build() {
+  cd "$_root/windows"
+  CARGO_TARGET_DIR="$srcdir/target" cargo build --release --locked -p codenotch -p codenotch-hook
+}
+
+package() {
+  local icons="$_root/windows/codenotch/icons"
+  install -Dm755 "$srcdir/target/release/codenotch" "$pkgdir/usr/lib/codenotch/codenotch"
+  install -Dm755 "$srcdir/target/release/codenotch-hook" "$pkgdir/usr/lib/codenotch/codenotch-hook"
+  install -Dm755 "$startdir/codenotch.sh" "$pkgdir/usr/bin/codenotch"
+  install -Dm644 "$startdir/codenotch.desktop" "$pkgdir/usr/share/applications/codenotch.desktop"
+  install -Dm644 "$icons/32x32.png" "$pkgdir/usr/share/icons/hicolor/32x32/apps/codenotch.png"
+  install -Dm644 "$icons/128x128.png" "$pkgdir/usr/share/icons/hicolor/128x128/apps/codenotch.png"
+  install -Dm644 "$icons/128x128@2x.png" "$pkgdir/usr/share/icons/hicolor/256x256/apps/codenotch.png"
+  install -Dm644 "$icons/icon.png" "$pkgdir/usr/share/icons/hicolor/512x512/apps/codenotch.png"
+  install -Dm644 "$_root/windows/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

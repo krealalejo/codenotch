@@ -1977,6 +1977,10 @@ fn adopt_system_proxy() {
 fn main() {
     #[cfg(windows)]
     adopt_system_proxy();
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("GDK_BACKEND").is_none() {
+        std::env::set_var("GDK_BACKEND", "x11");
+    }
     let args: Vec<String> = std::env::args().collect();
     if let Some(cmd) = args.get(1) {
         // Attaching on the GUI path too tied the notch to whatever cmd.exe launched it: closing that
