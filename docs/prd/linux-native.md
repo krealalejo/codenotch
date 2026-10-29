@@ -26,7 +26,7 @@ is focused, and clicking it focuses that terminal.
 
 ## In Scope
 
-- [ ] **Native Wayland edge.** When the compositor supports `wlr-layer-shell`, the notch
+- [x] **Native Wayland edge.** When the compositor supports `wlr-layer-shell`, the notch
       and the carry overlay are layer-shell surfaces anchored to the configured edge and
       monitor, placed with anchors and margins instead of `set_position`. Without
       layer-shell, behaviour falls back to today's X11 path unchanged.
@@ -45,8 +45,8 @@ is focused, and clicking it focuses that terminal.
       the hook, installs the binary, a `.desktop` entry and icons. The Linux launcher sets
       what `run-linux.sh` sets today, minus forcing X11 when layer-shell is available.
 - [x] **Updater off on Linux.** The in-app update check is hidden/disabled on Linux.
-- [x] **NVIDIA rendering.** The binary sets `WEBKIT_DISABLE_DMABUF_RENDERER=1` at startup
-      when unset, so WebKitGTK does not fail with `Failed to create GBM buffer`.
+- [x] **NVIDIA rendering.** In X11 mode the binary sets `WEBKIT_DISABLE_DMABUF_RENDERER=1`
+      at startup when unset, so WebKitGTK does not fail with `Failed to create GBM buffer`.
 - [x] **Hook binary name.** `hooks_install.rs` looks for `codenotch-hook` with the
       platform's executable suffix instead of a hard-coded `.exe`.
 - [ ] README Linux section updated to match.
@@ -126,3 +126,7 @@ on `linux-native`; revert the commit.
   WebKitGTK GBM failure, and in X11 mode Hyprland centres the window with a border instead
   of placing it on the edge. User approved: NVIDIA env default and hook binary name added to
   scope; native Wayland edge moved ahead of seen/jump-back and drag.
+- `2026-10-29` — Native Wayland notch confirmed by the user. A screen recording showed fold and
+  card transitions jumping in one frame with DMA-BUF off; with DMA-BUF on under native Wayland
+  there is no GBM error and the user confirmed the animations. The DMA-BUF workaround now
+  applies to X11 mode only. Ring spin depends on the Claude Code hooks, not on rendering.

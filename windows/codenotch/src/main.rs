@@ -1993,7 +1993,9 @@ fn main() {
         if std::env::var_os("GDK_BACKEND").is_none() {
             std::env::set_var("GDK_BACKEND", if linux_layer::wants_native() { "wayland" } else { "x11" });
         }
-        if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none()
+            && std::env::var("GDK_BACKEND").is_ok_and(|b| b == "x11")
+        {
             std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
         }
     }
