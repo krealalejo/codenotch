@@ -447,9 +447,7 @@ fn show(app: &AppHandle, screen: &crate::Screen) {
     match builder.build() {
         Ok(w) => {
             pin(&w, screen);
-            #[cfg(target_os = "linux")]
-            if crate::linux_layer::active() {
-                crate::linux_layer::adopt(&w, ax, ay);
+            if crate::show_as_layer(&w, ax, ay, true) {
                 return;
             }
             let _ = w.set_ignore_cursor_events(true);

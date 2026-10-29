@@ -49,16 +49,19 @@ pub fn install(window: &WebviewWindow) -> tauri::Result<()> {
     Ok(())
 }
 
-pub fn adopt(window: &WebviewWindow, x: i32, y: i32) {
+pub fn adopt(window: &WebviewWindow, x: i32, y: i32, click_through: bool) {
     let window = window.clone();
+    let keyboard = if click_through { KeyboardMode::None } else { KeyboardMode::OnDemand };
     let _ = window.clone().run_on_main_thread(move || {
         if let Ok(gtk_window) = window.gtk_window() {
-            if make_layer(&gtk_window, KeyboardMode::None) {
+            if make_layer(&gtk_window, keyboard) {
                 place_now(&gtk_window, x, y);
             }
         }
         let _ = window.show();
-        let _ = window.set_ignore_cursor_events(true);
+        if click_through {
+            let _ = window.set_ignore_cursor_events(true);
+        }
     });
 }
 

@@ -252,7 +252,9 @@ fn show_on_main(app: &AppHandle, event: ResetEvent, token: u64) -> Result<(), St
         let _ = window.set_size(tauri::PhysicalSize::new(width, height));
         let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
     }
-    window.show().map_err(|e| e.to_string())?;
+    if !crate::show_as_layer(&window, x, y, false) {
+        window.show().map_err(|e| e.to_string())?;
+    }
 
     let sound_on = app.state::<AppState>().cfg.lock().unwrap().reset_notification_sound;
     if sound_on {

@@ -1,6 +1,6 @@
 ---
 slug: linux-native
-status: approved
+status: done
 owner: krealalejo
 created: 2026-10-29
 approved_by: krealalejo (2026-10-29)
@@ -49,7 +49,9 @@ is focused, and clicking it focuses that terminal.
       at startup when unset, so WebKitGTK does not fail with `Failed to create GBM buffer`.
 - [x] **Hook binary name.** `hooks_install.rs` looks for `codenotch-hook` with the
       platform's executable suffix instead of a hard-coded `.exe`.
-- [ ] README Linux section updated to match.
+- [x] **Reset card on Wayland.** The reset card is a clickable layer surface beside the
+      notch instead of a centred toplevel.
+- [x] README Linux section updated to match.
 
 ---
 
@@ -144,3 +146,8 @@ on `linux-native`; revert the commit.
   hidden on Wayland and made click-through only once shown, since tao unwraps the GDK window.
   Also found that `test-update-ui.cjs` had been failing since step 1 (fixed in `c8ae15e`);
   all UI scripts now run on every step.
+
+- `2026-10-29` — Reset card added to scope by the user and converted with the same layer
+  helper, clickable and with on-demand keyboard for Escape. `run-linux.sh` no longer forces
+  X11; the binary chooses. Upstream's Linux CI job would need `libgtk-layer-shell-dev`
+  (CI out of scope; the job only runs on vinzdg/codenotch).

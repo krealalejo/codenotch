@@ -587,6 +587,19 @@ fn left_button_down() -> bool {
 }
 
 #[cfg(target_os = "linux")]
+pub(crate) fn show_as_layer(w: &tauri::WebviewWindow, x: i32, y: i32, click_through: bool) -> bool {
+    if !linux_layer::active() {
+        return false;
+    }
+    linux_layer::adopt(w, x, y, click_through);
+    true
+}
+#[cfg(not(target_os = "linux"))]
+pub(crate) fn show_as_layer(_w: &tauri::WebviewWindow, _x: i32, _y: i32, _click_through: bool) -> bool {
+    false
+}
+
+#[cfg(target_os = "linux")]
 pub(crate) fn cursor_position(app: &AppHandle) -> Option<tauri::PhysicalPosition<f64>> {
     linux_layer::cursor(app)
 }
