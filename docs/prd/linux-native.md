@@ -41,10 +41,14 @@ is focused, and clicking it focuses that terminal.
 - [ ] **Jump back to the terminal.** Linux `focus_terminal()` walks the Claude process's
       parent chain to a window-owning pid and focuses it via `hyprctl dispatch
       focuswindow pid:<n>` (Hyprland) or `_NET_ACTIVE_WINDOW` (X11).
-- [ ] **Packaging.** A `PKGBUILD` under `windows/packaging/arch/` that builds the app and
+- [x] **Packaging.** A `PKGBUILD` under `windows/packaging/arch/` that builds the app and
       the hook, installs the binary, a `.desktop` entry and icons. The Linux launcher sets
       what `run-linux.sh` sets today, minus forcing X11 when layer-shell is available.
-- [ ] **Updater off on Linux.** The in-app update check is hidden/disabled on Linux.
+- [x] **Updater off on Linux.** The in-app update check is hidden/disabled on Linux.
+- [x] **NVIDIA rendering.** The binary sets `WEBKIT_DISABLE_DMABUF_RENDERER=1` at startup
+      when unset, so WebKitGTK does not fail with `Failed to create GBM buffer`.
+- [x] **Hook binary name.** `hooks_install.rs` looks for `codenotch-hook` with the
+      platform's executable suffix instead of a hard-coded `.exe`.
 - [ ] README Linux section updated to match.
 
 ---
@@ -118,3 +122,7 @@ on `linux-native`; revert the commit.
 - `2026-10-29` — Antigravity excluded by the user. Discovered that `carry.rs` and the hover
   poll rely on `cursor_position()`, which has no global value on Wayland; native Wayland
   therefore also needs a pointer source (Hyprland IPC), added to scope under the edge item.
+- `2026-10-29` — Step 1 (packaging, updater off) done. First real run on Hyprland + NVIDIA:
+  WebKitGTK GBM failure, and in X11 mode Hyprland centres the window with a border instead
+  of placing it on the edge. User approved: NVIDIA env default and hook binary name added to
+  scope; native Wayland edge moved ahead of seen/jump-back and drag.
