@@ -35,12 +35,12 @@ is focused, and clicking it focuses that terminal.
       Hyprland, because `cursor_position()` has no global meaning on Wayland.
 - [ ] **Drag along the edge.** A Linux `left_button_down()` so `carry.rs` works: GDK
       pointer button state on X11; on Wayland the press/release seen by the notch surface.
-- [ ] **Seen-clears-it.** Linux `proc_maps()` / `chain_of()` / `pid_hits_chain()` from
-      `/proc`, and `fg_pid()` from Hyprland IPC (`activewindow`), or `_NET_ACTIVE_WINDOW`
-      + `_NET_WM_PID` on X11, so `ack_scan` runs on Linux.
-- [ ] **Jump back to the terminal.** Linux `focus_terminal()` walks the Claude process's
-      parent chain to a window-owning pid and focuses it via `hyprctl dispatch
-      focuswindow pid:<n>` (Hyprland) or `_NET_ACTIVE_WINDOW` (X11).
+- [x] **Seen-clears-it.** Linux `proc_maps()` / `chain_of()` / `pid_hits_chain()` from
+      `/proc`, and `fg_pid()` from Hyprland IPC (`activewindow`), or `xdotool` when present
+      on X11, so `ack_scan` runs on Linux.
+- [x] **Jump back to the terminal.** Linux `focus_terminal()` walks the Claude process's
+      parent chain to a window-owning pid and focuses it via Hyprland IPC
+      (`dispatch focuswindow address:<a>`) or `xdotool windowactivate` when present on X11.
 - [x] **Packaging.** A `PKGBUILD` under `windows/packaging/arch/` that builds the app and
       the hook, installs the binary, a `.desktop` entry and icons. The Linux launcher sets
       what `run-linux.sh` sets today, minus forcing X11 when layer-shell is available.
@@ -130,3 +130,8 @@ on `linux-native`; revert the commit.
   card transitions jumping in one frame with DMA-BUF off; with DMA-BUF on under native Wayland
   there is no GBM error and the user confirmed the animations. The DMA-BUF workaround now
   applies to X11 mode only. Ring spin depends on the Claude Code hooks, not on rendering.
+- `2026-10-29` — Seen/jump-back: X11 uses `xdotool` if installed instead of raw
+  `_NET_ACTIVE_WINDOW`, to avoid an X11 crate. On Linux `pid_hits_chain` no longer accepts the
+  focused window's parent: the chain runs past the terminal up to the compositor, so any app it
+  launched would have cleared every session. Windows compile check not run: `ring` needs
+  `mingw-w64-gcc`, not installed — unverified.

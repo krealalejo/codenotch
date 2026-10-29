@@ -49,6 +49,8 @@ mod updater;
 mod linux_pointer;
 #[cfg(target_os = "linux")]
 mod linux_layer;
+#[cfg(target_os = "linux")]
+mod linux_hypr;
 
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
@@ -1886,7 +1888,6 @@ fn start_menu_updater(app: AppHandle) {
 }
 
 /// Seen-clears-it: looking at a session acknowledges it (engine behaviour, unchanged)
-#[cfg(windows)]
 fn ack_scan(app: &AppHandle) -> bool {
     let need = {
         let st = app.state::<AppState>();
@@ -1912,10 +1913,6 @@ fn ack_scan(app: &AppHandle) -> bool {
             focus::pid_hits_chain(fg, &focus::chain_of(s.ppid, &maps.ppid), &maps)
         }
     })
-}
-#[cfg(not(windows))]
-fn ack_scan(_app: &AppHandle) -> bool {
-    false
 }
 
 // ---------------- main ----------------

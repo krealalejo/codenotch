@@ -114,14 +114,43 @@ pub fn focus_terminal(claude_pid: u32) -> bool {
     true
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
+pub fn focus_terminal(claude_pid: u32) -> bool {
+    if claude_pid == 0 {
+        return false;
+    }
+    let chain = chain_of(claude_pid, &proc_maps().ppid);
+    if crate::linux_hypr::available() {
+        return crate::linux_hypr::focus_pid_in(&chain);
+    }
+    chain.iter().any(|pid| {
+        let found = xdotool(&["search", "--onlyvisible", "--pid", &pid.to_string()]);
+        let Some(window) = found.lines().last().filter(|w| !w.is_empty()) else { return false };
+        std::process::Command::new("xdotool")
+            .args(["windowactivate", window])
+            .status()
+            .is_ok_and(|s| s.success())
+    })
+}
+
+#[cfg(target_os = "linux")]
+fn xdotool(args: &[&str]) -> String {
+    std::process::Command::new("xdotool")
+        .args(args)
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+        .unwrap_or_default()
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
 pub fn focus_terminal(_claude_pid: u32) -> bool {
     false
 }
 
 // ---------------- Process and foreground helpers shared by seen-clears-it and the desktop jump-back ----------------
 
-#[cfg(windows)]
 pub struct ProcMaps {
     pub ppid: std::collections::HashMap<u32, u32>,
     pub name: std::collections::HashMap<u32, String>, // lower-case exe name
@@ -177,7 +206,45 @@ pub fn fg_pid() -> u32 {
     }
 }
 
-#[cfg(windows)]
+#[cfg(target_os = "linux")]
+pub fn proc_maps() -> ProcMaps {
+    let mut m = ProcMaps {
+        ppid: Default::default(),
+        name: Default::default(),
+    };
+    let Ok(entries) = std::fs::read_dir("/proc") else { return m };
+    for entry in entries.flatten() {
+        let Some(pid) = entry.file_name().to_str().and_then(|n| n.parse::<u32>().ok()) else { continue };
+        let Ok(stat) = std::fs::read_to_string(entry.path().join("stat")) else { continue };
+        let (Some(open), Some(close)) = (stat.find('('), stat.rfind(')')) else { continue };
+        let Some(ppid) = stat[close + 1..].split_whitespace().nth(1).and_then(|p| p.parse::<u32>().ok()) else { continue };
+        m.ppid.insert(pid, ppid);
+        m.name.insert(pid, stat[open + 1..close].to_lowercase());
+    }
+    m
+}
+
+#[cfg(target_os = "linux")]
+pub fn fg_pid() -> u32 {
+    if crate::linux_hypr::available() {
+        return crate::linux_hypr::active_pid().unwrap_or(0);
+    }
+    xdotool(&["getactivewindow", "getwindowpid"]).trim().parse().unwrap_or(0)
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
+pub fn proc_maps() -> ProcMaps {
+    ProcMaps {
+        ppid: Default::default(),
+        name: Default::default(),
+    }
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
+pub fn fg_pid() -> u32 {
+    0
+}
+
 pub fn chain_of(pid: u32, ppid: &std::collections::HashMap<u32, u32>) -> Vec<u32> {
     let mut chain = vec![pid];
     let mut cur = pid;
@@ -194,14 +261,14 @@ pub fn chain_of(pid: u32, ppid: &std::collections::HashMap<u32, u32>) -> Vec<u32
 }
 
 /// Whether the foreground process belongs to a session's terminal window (itself on the chain, or its parent — the conhost case)
-#[cfg(windows)]
 pub fn pid_hits_chain(pid: u32, chain: &[u32], maps: &ProcMaps) -> bool {
     chain.contains(&pid)
-        || maps
-            .ppid
-            .get(&pid)
-            .map(|p| chain.contains(p))
-            .unwrap_or(false)
+        || (cfg!(windows)
+            && maps
+                .ppid
+                .get(&pid)
+                .map(|p| chain.contains(p))
+                .unwrap_or(false))
 }
 
 /// Focus the Claude desktop app's main window (the jump-back target for desktop sessions: the largest visible window whose process name contains claude)
@@ -271,4 +338,26 @@ pub fn focus_claude_desktop() -> bool {
 #[cfg(not(windows))]
 pub fn focus_claude_desktop() -> bool {
     false
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    #[test]
+    fn proc_maps_reads_this_process_and_its_parent() {
+        let me = std::process::id();
+        let maps = super::proc_maps();
+        assert_eq!(maps.ppid.get(&me), Some(&std::os::unix::process::parent_id()));
+        let chain = super::chain_of(me, &maps.ppid);
+        assert_eq!(chain[0], me);
+        assert!(chain.contains(&std::os::unix::process::parent_id()));
+    }
+
+    #[test]
+    fn an_app_started_by_the_compositor_does_not_see_every_session() {
+        let ppid = [(30, 20), (20, 10), (10, 1), (40, 1)].into_iter().collect();
+        let maps = super::ProcMaps { ppid, name: Default::default() };
+        let chain = super::chain_of(30, &maps.ppid);
+        assert!(super::pid_hits_chain(10, &chain, &maps));
+        assert!(!super::pid_hits_chain(40, &chain, &maps));
+    }
 }
