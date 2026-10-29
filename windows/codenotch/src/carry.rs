@@ -283,7 +283,7 @@ fn run(app: &AppHandle, shape: serde_json::Value) {
     let (Some(start), Some(notch)) = (crate::target_screen(app), app.get_webview_window("notch")) else {
         return;
     };
-    let (Ok(pos), Ok(win), Ok(cur)) = (notch.outer_position(), notch.outer_size(), app.cursor_position()) else {
+    let (Some((pos, win)), Some(cur)) = (crate::notch_rect(&notch), crate::cursor_position(app)) else {
         return;
     };
     let from = Edge::parse(&{
@@ -324,7 +324,7 @@ fn run(app: &AppHandle, shape: serde_json::Value) {
     let all = crate::screens(app);
     let mut last = middle;
     while crate::left_button_down() {
-        if let Ok(cur) = app.cursor_position() {
+        if let Some(cur) = crate::cursor_position(app) {
             if let Some(s) = crate::screen_at(&all, cur.x, cur.y)
                 .filter(|s| !crate::same_screen(s, &mon) && beyond(&mon, cur.x, cur.y) / s.scale >= CROSS)
             {
@@ -442,9 +442,16 @@ fn show(app: &AppHandle, screen: &crate::Screen) {
         .resizable(false)
         .theme(crate::theme_choice(app))
         .initialization_script(crate::theme_script(crate::resolved_theme(app)));
+    #[cfg(target_os = "linux")]
+    let builder = builder.visible(!crate::linux_layer::active());
     match builder.build() {
         Ok(w) => {
             pin(&w, screen);
+            #[cfg(target_os = "linux")]
+            if crate::linux_layer::active() {
+                crate::linux_layer::adopt(&w, ax, ay);
+                return;
+            }
             let _ = w.set_ignore_cursor_events(true);
         }
         Err(e) => crate::applog(&format!("carry overlay: {e}")),
@@ -458,6 +465,8 @@ fn pin(w: &tauri::WebviewWindow, screen: &crate::Screen) {
     let size = tauri::PhysicalSize::new(aw.max(1) as u32, ah.max(1) as u32);
     for _ in 0..2 {
         let _ = w.set_position(tauri::PhysicalPosition::new(ax, ay));
+        #[cfg(target_os = "linux")]
+        crate::linux_layer::place(w.app_handle(), LABEL, ax, ay);
         let _ = w.set_size(size);
         if w.outer_size().map(|s| s == size).unwrap_or(true) {
             break;

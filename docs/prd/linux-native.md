@@ -30,10 +30,10 @@ is focused, and clicking it focuses that terminal.
       and the carry overlay are layer-shell surfaces anchored to the configured edge and
       monitor, placed with anchors and margins instead of `set_position`. Without
       layer-shell, behaviour falls back to today's X11 path unchanged.
-- [ ] **Pointer on Wayland.** The hover poll (`main.rs`) and the drag loop (`carry.rs`)
+- [x] **Pointer on Wayland.** The hover poll (`main.rs`) and the drag loop (`carry.rs`)
       read the global pointer from Hyprland IPC (`cursorpos`) when running native on
       Hyprland, because `cursor_position()` has no global meaning on Wayland.
-- [ ] **Drag along the edge.** A Linux `left_button_down()` so `carry.rs` works: GDK
+- [x] **Drag along the edge.** A Linux `left_button_down()` so `carry.rs` works: GDK
       pointer button state on X11; on Wayland the press/release seen by the notch surface.
 - [x] **Seen-clears-it.** Linux `proc_maps()` / `chain_of()` / `pid_hits_chain()` from
       `/proc`, and `fg_pid()` from Hyprland IPC (`activewindow`), or `xdotool` when present
@@ -135,3 +135,12 @@ on `linux-native`; revert the commit.
   focused window's parent: the chain runs past the terminal up to the compositor, so any app it
   launched would have cleared every session. Windows compile check not run: `ring` needs
   `mingw-w64-gcc`, not installed — unverified.
+- `2026-10-29` — Drag: on the user's request the Linux gesture is Ctrl+drag on the pill, and
+  the dots handle is hidden on Linux (the orb stays: it opens Settings). Ctrl only reaches a
+  layer surface with keyboard focus, so the notch uses `KeyboardMode::OnDemand`; clicking it
+  takes keyboard focus. Layer surfaces report `(0,0)` for their position and size, which
+  threw drags to the top corner; the notch's placed rectangle is now kept by `place_notch`
+  and read by carry, the reset card and the backdrop probe. The carry overlay is created
+  hidden on Wayland and made click-through only once shown, since tao unwraps the GDK window.
+  Also found that `test-update-ui.cjs` had been failing since step 1 (fixed in `c8ae15e`);
+  all UI scripts now run on every step.

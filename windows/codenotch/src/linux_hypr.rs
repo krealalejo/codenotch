@@ -27,6 +27,11 @@ fn json(command: &str) -> Option<serde_json::Value> {
     serde_json::from_str(&request(&format!("j/{command}"))?).ok()
 }
 
+pub fn cursor() -> Option<(f64, f64)> {
+    let position = json("cursorpos")?;
+    Some((position.get("x")?.as_f64()?, position.get("y")?.as_f64()?))
+}
+
 pub fn active_pid() -> Option<u32> {
     let pid = json("activewindow")?.get("pid")?.as_i64()?;
     u32::try_from(pid).ok().filter(|p| *p != 0)

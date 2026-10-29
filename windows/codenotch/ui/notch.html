@@ -202,6 +202,7 @@
      clipped pill. A single vector outline keeps all corners in the same frame. */
   body.linux-vector #pill{background:transparent;border-color:transparent}
   body.linux-vector #pill::before,body.linux-vector #pill::after{display:none}
+  body.linux-vector #grip{display:none!important}
   #pillContour{position:absolute;pointer-events:none;overflow:visible;
     transform-origin:100% 50%;transition:transform .36s cubic-bezier(.32,.72,.24,1),opacity .18s ease}
   #pillContour path{fill:var(--pill);stroke:var(--edge);stroke-width:1}
@@ -1839,8 +1840,9 @@ function settle(id){
 // Alt+drag, the Mac's ⌥-drag: round the screen's border, drawn by carry.html meanwhile. Without Alt
 // a press on the pill is only ever a click — a ring refreshes (#244) — so one that slips can no
 // longer carry the notch off (#251).
-pill.addEventListener('mousedown',e=>{ if(e.button!==0||folded)return; press={x:e.clientX,y:e.clientY,id:cellAt(e.clientX,e.clientY)||hoverId,alt:e.altKey}; });
+pill.addEventListener('mousedown',e=>{ if(e.button!==0||folded)return; press={x:e.clientX,y:e.clientY,id:cellAt(e.clientX,e.clientY)||hoverId,alt:e.altKey||(isLinux&&e.ctrlKey)}; });
 document.addEventListener('mousemove',e=>{
+  if(press&&isLinux&&e.ctrlKey) press.alt=true;
   if(!press||dragging||!press.alt)return;
   if(Math.abs(e.clientY-press.y)>4||Math.abs(e.clientX-press.x)>4){
     dragging=true; clearTimeout(hideTimer); hideCard();
@@ -1950,7 +1952,7 @@ function gripRect(){
   return [(g.x-g.reach)*k,(g.y-g.reach)*k,2*g.reach*k,2*g.reach*k];
 }
 // The dots can only be taken while they are out, so reaching for them means passing the orb first
-function onHandle(x,y){ return near(orbAt,x,y)?'orb':(gripOut()&&near(gripAt,x,y))?'grip':null; }
+function onHandle(x,y){ return near(orbAt,x,y)?'orb':(!isLinux&&gripOut()&&near(gripAt,x,y))?'grip':null; }
 function setHovered(which){
   if(which===hovered) return;
   const wasOut=gripOut();

@@ -129,8 +129,7 @@ fn show(app: &AppHandle, event: ResetEvent, token: u64) -> Result<(), String> {
 /// DPI, all already folded into the notch window's measured size).
 fn notch_geometry(app: &AppHandle) -> Option<(i32, i32, i32, i32)> {
     let w = app.get_webview_window("notch")?;
-    let pos = w.outer_position().ok()?;
-    let size = w.outer_size().ok()?;
+    let (pos, size) = crate::notch_rect(&w)?;
     Some((pos.x, pos.y, size.width as i32, size.height as i32))
 }
 

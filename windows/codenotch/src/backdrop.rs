@@ -194,7 +194,7 @@ fn read(app: &AppHandle, rect: [f64; 4]) -> Option<f64> {
     if !w.is_visible().ok()? {
         return None;
     }
-    let pos = w.outer_position().ok()?;
+    let (pos, _) = crate::notch_rect(&w)?;
     let [x, y, width, height] = rect.map(|v| v.round() as i32);
     luminance(&capture(pos.x + x, pos.y + y, width, height)?)
 }

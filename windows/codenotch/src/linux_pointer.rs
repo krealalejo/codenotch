@@ -1,5 +1,5 @@
 //! Native input regions avoid polling a stale global pointer under XWayland.
-use std::{cell::RefCell, rc::Rc, time::Duration};
+use std::{cell::RefCell, rc::Rc, sync::atomic::{AtomicBool, Ordering}, time::Duration};
 
 use gtk::{glib, prelude::*};
 use tauri::{AppHandle, Manager, WebviewWindow};
@@ -11,6 +11,25 @@ fn cancel_leave(pending: &PendingLeave) {
     if let Some(source) = pending.borrow_mut().take() {
         source.remove();
     }
+}
+
+static LEFT_DOWN: AtomicBool = AtomicBool::new(false);
+
+pub fn left_button_down() -> bool {
+    LEFT_DOWN.load(Ordering::Relaxed)
+}
+
+pub fn track_left_button() {
+    gtk::gdk::Event::set_handler(Some(|event: &mut gtk::gdk::Event| {
+        if event.button() == Some(1) {
+            match event.event_type() {
+                gtk::gdk::EventType::ButtonPress => LEFT_DOWN.store(true, Ordering::Relaxed),
+                gtk::gdk::EventType::ButtonRelease => LEFT_DOWN.store(false, Ordering::Relaxed),
+                _ => {}
+            }
+        }
+        gtk::main_do_event(event);
+    }));
 }
 
 /// Install once, with the GTK window's lifecycle, on the main thread.

@@ -327,6 +327,17 @@ pub fn notch_window_size(edge: &str) -> (f64, f64) {
     }
 }
 
+static NOTCH_RECT: Mutex<Option<(i32, i32, i32, i32)>> = Mutex::new(None);
+
+pub(crate) fn notch_rect(w: &tauri::WebviewWindow) -> Option<(tauri::PhysicalPosition<i32>, tauri::PhysicalSize<u32>)> {
+    #[cfg(target_os = "linux")]
+    if linux_layer::active() {
+        let (x, y, width, height) = (*NOTCH_RECT.lock().unwrap())?;
+        return Some((tauri::PhysicalPosition::new(x, y), tauri::PhysicalSize::new(width.max(0) as u32, height.max(0) as u32)));
+    }
+    Some((w.outer_position().ok()?, w.outer_size().ok()?))
+}
+
 pub fn place_notch(app: &AppHandle) {
     *GLIDE.lock().unwrap() += 1;
     let Some(w) = app.get_webview_window("notch") else {
@@ -379,6 +390,7 @@ pub fn place_notch(app: &AppHandle) {
             linux_layer::place(app, "notch", x, y);
             placed = (x, y, target.width as i32, target.height as i32);
         }
+        *NOTCH_RECT.lock().unwrap() = Some(placed);
         // The page mirrors itself for the edge it is on; it cannot know that on its own.
         let _ = w.emit("notch_edge", &edge);
         // Nor can it see the taskbar: a card opened near the bottom of a side edge slid under it.
@@ -565,9 +577,22 @@ fn left_button_down() -> bool {
     use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
     unsafe { (GetAsyncKeyState(VK_LBUTTON.0 as i32) as u16 & 0x8000) != 0 }
 }
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
+fn left_button_down() -> bool {
+    linux_pointer::left_button_down()
+}
+#[cfg(not(any(windows, target_os = "linux")))]
 fn left_button_down() -> bool {
     false
+}
+
+#[cfg(target_os = "linux")]
+pub(crate) fn cursor_position(app: &AppHandle) -> Option<tauri::PhysicalPosition<f64>> {
+    linux_layer::cursor(app)
+}
+#[cfg(not(target_os = "linux"))]
+pub(crate) fn cursor_position(app: &AppHandle) -> Option<tauri::PhysicalPosition<f64>> {
+    app.cursor_position().ok()
 }
 
 pub fn place_bar(app: &AppHandle) {
@@ -2175,6 +2200,7 @@ fn main() {
             #[cfg(target_os = "linux")]
             if let Some(w) = handle.get_webview_window("notch") {
                 linux_layer::install(&w)?;
+                linux_pointer::track_left_button();
             }
             place_notch(&handle);
             // Before the notch is shown: a window shown on the system appearance and corrected

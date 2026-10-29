@@ -20,28 +20,46 @@ fn on_wayland() -> bool {
     gtk::gdk::Display::default().is_some_and(|d| d.type_().name() == "GdkWaylandDisplay")
 }
 
-pub fn install(window: &WebviewWindow) -> tauri::Result<()> {
+fn make_layer(gtk_window: &gtk::ApplicationWindow, keyboard: KeyboardMode) -> bool {
     if !on_wayland() {
-        return Ok(());
+        return false;
     }
     if !gtk_layer_shell::is_supported() {
         crate::applog("layer-shell: not offered by this compositor; the notch cannot sit on an edge");
-        return Ok(());
+        return false;
     }
-    let gtk_window = window.gtk_window()?;
     if gtk_window.is_realized() {
         gtk_window.unrealize();
     }
     gtk_window.init_layer_shell();
     gtk_window.set_namespace("codenotch");
     gtk_window.set_layer(Layer::Overlay);
-    gtk_window.set_keyboard_mode(KeyboardMode::None);
+    gtk_window.set_keyboard_mode(keyboard);
     gtk_window.set_exclusive_zone(-1);
     gtk_window.set_anchor(Edge::Left, true);
     gtk_window.set_anchor(Edge::Top, true);
-    ACTIVE.store(true, Ordering::Relaxed);
-    crate::applog("layer-shell: notch is a layer surface");
+    true
+}
+
+pub fn install(window: &WebviewWindow) -> tauri::Result<()> {
+    if make_layer(&window.gtk_window()?, KeyboardMode::OnDemand) {
+        ACTIVE.store(true, Ordering::Relaxed);
+        crate::applog("layer-shell: notch is a layer surface");
+    }
     Ok(())
+}
+
+pub fn adopt(window: &WebviewWindow, x: i32, y: i32) {
+    let window = window.clone();
+    let _ = window.clone().run_on_main_thread(move || {
+        if let Ok(gtk_window) = window.gtk_window() {
+            if make_layer(&gtk_window, KeyboardMode::None) {
+                place_now(&gtk_window, x, y);
+            }
+        }
+        let _ = window.show();
+        let _ = window.set_ignore_cursor_events(true);
+    });
 }
 
 pub fn place(app: &AppHandle, label: &'static str, x: i32, y: i32) {
@@ -49,9 +67,15 @@ pub fn place(app: &AppHandle, label: &'static str, x: i32, y: i32) {
     let _ = app.run_on_main_thread(move || {
         let Some(window) = handle.get_webview_window(label) else { return };
         let Ok(gtk_window) = window.gtk_window() else { return };
-        if !gtk_window.is_layer_window() {
-            return;
-        }
+        place_now(&gtk_window, x, y);
+    });
+}
+
+fn place_now(gtk_window: &gtk::ApplicationWindow, x: i32, y: i32) {
+    if !gtk_window.is_layer_window() {
+        return;
+    }
+    {
         let Some(display) = gtk::gdk::Display::default() else { return };
         let monitors = (0..display.n_monitors()).filter_map(|i| display.monitor(i));
         let mut nearest: Option<(gtk::gdk::Monitor, i64)> = None;
@@ -73,5 +97,18 @@ pub fn place(app: &AppHandle, label: &'static str, x: i32, y: i32) {
         gtk_window.set_monitor(&monitor);
         gtk_window.set_layer_shell_margin(Edge::Left, (x - g.x() * s) / s);
         gtk_window.set_layer_shell_margin(Edge::Top, (y - g.y() * s) / s);
-    });
+    }
+}
+
+pub fn cursor(app: &AppHandle) -> Option<tauri::PhysicalPosition<f64>> {
+    if !active() {
+        return app.cursor_position().ok();
+    }
+    let (lx, ly) = crate::linux_hypr::cursor()?;
+    let screens = crate::screens(app);
+    let screen = screens.iter().find(|s| {
+        let (x, y) = (s.x as f64 / s.scale, s.y as f64 / s.scale);
+        lx >= x && ly >= y && lx < x + s.w as f64 / s.scale && ly < y + s.h as f64 / s.scale
+    })?;
+    Some(tauri::PhysicalPosition::new(lx * screen.scale, ly * screen.scale))
 }
