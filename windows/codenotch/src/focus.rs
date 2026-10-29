@@ -123,6 +123,9 @@ pub fn focus_terminal(claude_pid: u32) -> bool {
     if crate::linux_hypr::available() {
         return crate::linux_hypr::focus_pid_in(&chain);
     }
+    if crate::linux_sway::available() {
+        return crate::linux_sway::focus_pid_in(&chain);
+    }
     chain.iter().any(|pid| {
         let found = xdotool(&["search", "--onlyvisible", "--pid", &pid.to_string()]);
         let Some(window) = found.lines().last().filter(|w| !w.is_empty()) else { return false };
@@ -228,6 +231,9 @@ pub fn proc_maps() -> ProcMaps {
 pub fn fg_pid() -> u32 {
     if crate::linux_hypr::available() {
         return crate::linux_hypr::active_pid().unwrap_or(0);
+    }
+    if crate::linux_sway::available() {
+        return crate::linux_sway::active_pid().unwrap_or(0);
     }
     xdotool(&["getactivewindow", "getwindowpid"]).trim().parse().unwrap_or(0)
 }

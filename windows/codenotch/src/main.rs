@@ -51,6 +51,8 @@ mod linux_pointer;
 mod linux_layer;
 #[cfg(target_os = "linux")]
 mod linux_hypr;
+#[cfg(target_os = "linux")]
+mod linux_sway;
 
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
