@@ -107,11 +107,22 @@ pub fn cursor(app: &AppHandle) -> Option<tauri::PhysicalPosition<f64>> {
     if !active() {
         return app.cursor_position().ok();
     }
-    let (lx, ly) = crate::linux_hypr::cursor()?;
-    let screens = crate::screens(app);
-    let screen = screens.iter().find(|s| {
-        let (x, y) = (s.x as f64 / s.scale, s.y as f64 / s.scale);
-        lx >= x && ly >= y && lx < x + s.w as f64 / s.scale && ly < y + s.h as f64 / s.scale
-    })?;
-    Some(tauri::PhysicalPosition::new(lx * screen.scale, ly * screen.scale))
+    let notch = app.get_webview_window("notch")?;
+    let (origin, _) = crate::notch_rect(&notch)?;
+    let held = crate::linux_pointer::held_at()?;
+    let (x, y) = from_surface((origin.x, origin.y), held, notch.scale_factor().ok()?);
+    Some(tauri::PhysicalPosition::new(x, y))
+}
+
+fn from_surface(origin: (i32, i32), at: (f64, f64), scale: f64) -> (f64, f64) {
+    (origin.0 as f64 + at.0 * scale, origin.1 as f64 + at.1 * scale)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn a_point_on_the_surface_lands_on_the_desktop_from_the_notch_origin() {
+        assert_eq!(super::from_surface((720, 635), (40.0, 300.0), 1.0), (760.0, 935.0));
+        assert_eq!(super::from_surface((1080, 240), (-50.0, 10.5), 2.0), (980.0, 261.0));
+    }
 }

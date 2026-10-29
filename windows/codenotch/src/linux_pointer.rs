@@ -1,5 +1,5 @@
 //! Native input regions avoid polling a stale global pointer under XWayland.
-use std::{cell::RefCell, rc::Rc, sync::atomic::{AtomicBool, Ordering}, time::Duration};
+use std::{cell::RefCell, rc::Rc, sync::{atomic::{AtomicBool, Ordering}, Mutex}, time::Duration};
 
 use gtk::{glib, prelude::*};
 use tauri::{AppHandle, Manager, WebviewWindow};
@@ -14,19 +14,45 @@ fn cancel_leave(pending: &PendingLeave) {
 }
 
 static LEFT_DOWN: AtomicBool = AtomicBool::new(false);
+static HELD_AT: Mutex<Option<(f64, f64)>> = Mutex::new(None);
 
 pub fn left_button_down() -> bool {
     LEFT_DOWN.load(Ordering::Relaxed)
 }
 
+pub fn held_at() -> Option<(f64, f64)> {
+    if !left_button_down() {
+        return None;
+    }
+    *HELD_AT.lock().unwrap()
+}
+
+fn on_toplevel(event: &gtk::gdk::Event) -> Option<(f64, f64)> {
+    let (mut x, mut y) = event.coords()?;
+    let mut window = event.window()?;
+    while window.window_type() == gtk::gdk::WindowType::Child {
+        (x, y) = window.coords_to_parent(x, y);
+        window = window.parent()?;
+    }
+    Some((x, y))
+}
+
 pub fn track_left_button() {
     gtk::gdk::Event::set_handler(Some(|event: &mut gtk::gdk::Event| {
-        if event.button() == Some(1) {
-            match event.event_type() {
-                gtk::gdk::EventType::ButtonPress => LEFT_DOWN.store(true, Ordering::Relaxed),
-                gtk::gdk::EventType::ButtonRelease => LEFT_DOWN.store(false, Ordering::Relaxed),
-                _ => {}
+        match event.event_type() {
+            gtk::gdk::EventType::ButtonPress if event.button() == Some(1) => {
+                *HELD_AT.lock().unwrap() = on_toplevel(event);
+                LEFT_DOWN.store(true, Ordering::Relaxed);
             }
+            gtk::gdk::EventType::ButtonRelease if event.button() == Some(1) => {
+                LEFT_DOWN.store(false, Ordering::Relaxed);
+            }
+            gtk::gdk::EventType::MotionNotify if left_button_down() => {
+                if let Some(at) = on_toplevel(event) {
+                    *HELD_AT.lock().unwrap() = Some(at);
+                }
+            }
+            _ => {}
         }
         gtk::main_do_event(event);
     }));
