@@ -339,12 +339,14 @@ Linux-specific behaviour:
 | Feature | How |
 |---|---|
 | Moving the notch | **Ctrl+drag** on the pill — Alt is usually taken by the window manager. The dots handle is hidden; the orb still opens Settings. Clicking the notch takes keyboard focus, because a layer surface only learns that Ctrl is held while it has it. |
-| Seen-clears-it | The process tree comes from `/proc`; the focused window from Hyprland's IPC socket, or `xdotool` on X11 when it is installed. |
+| Seen-clears-it | The process tree comes from `/proc`; the focused window from Hyprland's or Sway's IPC socket, or `xdotool` on X11 when it is installed. |
 | Jumping back to the terminal | Implemented the same way (`focus::focus_terminal`), but no control in the notch calls it yet, on any platform. |
 | Claude Code hooks | Settings › Accounts › Claude › *Let Claude Code notify Codenotch*, or `codenotch install-hooks`. |
 
-On Wayland the pointer is read from Hyprland's IPC socket, so dragging needs Hyprland there;
-other layer-shell compositors show the notch but cannot drag it yet. A terminal that hosts all
+Dragging works on any layer-shell compositor: Wayland keeps sending pointer motion to the
+surface the button went down on until it is released, so the pointer's place on the desktop is
+the notch's own origin plus that offset. Seen-clears-it and the jump back know Hyprland, Sway
+and X11; on KDE they do nothing yet. A terminal that hosts all
 its windows in one process — kitty, for one — looks like one window to seen-clears-it, so
 focusing any of them clears every session running in it.
 
