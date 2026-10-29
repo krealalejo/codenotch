@@ -1,6 +1,6 @@
 pkgname=codenotch
 pkgver=1.24.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Usage limits of Claude Code, Codex, Cursor and other coding assistants on a screen edge"
 arch=('x86_64')
 url="https://github.com/krealalejo/codenotch"
