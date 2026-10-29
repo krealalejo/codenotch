@@ -47,6 +47,8 @@ mod topmost;
 mod updater;
 #[cfg(target_os = "linux")]
 mod linux_pointer;
+#[cfg(target_os = "linux")]
+mod linux_layer;
 
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
@@ -364,11 +366,15 @@ pub fn place_notch(app: &AppHandle) {
         };
         let (x, y) = edge_origin(&mon, &edge, ww, wh, ratio);
         let _ = w.set_position(tauri::PhysicalPosition::new(x, y));
+        #[cfg(target_os = "linux")]
+        linux_layer::place(app, "notch", x, y);
         let mut placed = (x, y, ww, wh);
         if w.outer_size().map(|s| s.width != target.width).unwrap_or(false) {
             let _ = w.set_size(target);
             let (x, y) = edge_origin(&mon, &edge, target.width as i32, target.height as i32, ratio);
             let _ = w.set_position(tauri::PhysicalPosition::new(x, y));
+            #[cfg(target_os = "linux")]
+            linux_layer::place(app, "notch", x, y);
             placed = (x, y, target.width as i32, target.height as i32);
         }
         // The page mirrors itself for the edge it is on; it cannot know that on its own.
@@ -426,6 +432,11 @@ pub(crate) fn glide_notch(app: &AppHandle) {
         *g += 1;
         *g
     };
+    #[cfg(target_os = "linux")]
+    if linux_layer::active() {
+        place_notch(app);
+        return;
+    }
     let Some(w) = app.get_webview_window("notch") else { return };
     let (Some(mon), Ok(from), Ok(size)) = (target_screen(app), w.outer_position(), w.outer_size()) else {
         place_notch(app);
@@ -1980,7 +1991,7 @@ fn main() {
     #[cfg(target_os = "linux")]
     {
         if std::env::var_os("GDK_BACKEND").is_none() {
-            std::env::set_var("GDK_BACKEND", "x11");
+            std::env::set_var("GDK_BACKEND", if linux_layer::wants_native() { "wayland" } else { "x11" });
         }
         if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
             std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
@@ -2162,6 +2173,10 @@ fn main() {
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
+            #[cfg(target_os = "linux")]
+            if let Some(w) = handle.get_webview_window("notch") {
+                linux_layer::install(&w)?;
+            }
             place_notch(&handle);
             // Before the notch is shown: a window shown on the system appearance and corrected
             // after paints the wrong one for a frame, which is a black flash under a light choice
