@@ -1881,7 +1881,7 @@ document.getElementById('author').addEventListener('click', () => {
    was asked for rather than interrupting anything. */
 const updBtn = document.getElementById('btn-update');
 const updStatus = document.getElementById('update-status');
-if(/Linux/.test(navigator.platform)){
+if(typeof navigator!=='undefined'&&/Linux/.test(navigator.platform)){
   const updRow = updBtn.closest('.item');
   updRow.nextElementSibling.style.display = 'none';
   updRow.style.display = 'none';
